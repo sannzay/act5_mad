@@ -1,82 +1,82 @@
 import 'package:flutter/material.dart';
+import 'models/pet.dart';
+import 'screens/pet_customization_screen.dart';
+import 'screens/pet_screen.dart';
+import 'services/pet_storage_service.dart';
+
 void main() {
-runApp(MaterialApp(
-home: DigitalPetApp(),
-));
+  runApp(const MyApp());
 }
+
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Digital Pet',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        useMaterial3: true,
+      ),
+      home: const DigitalPetApp(),
+    );
+  }
+}
+
 class DigitalPetApp extends StatefulWidget {
-@override
-_DigitalPetAppState createState() => _DigitalPetAppState();
+  const DigitalPetApp({Key? key}) : super(key: key);
+
+  @override
+  _DigitalPetAppState createState() => _DigitalPetAppState();
 }
+
 class _DigitalPetAppState extends State<DigitalPetApp> {
-String petName = "Your Pet";
-int happinessLevel = 50;
-int hungerLevel = 50;
-void _playWithPet() {
-setState(() {
-happinessLevel += 10;
-_updateHunger();
-});
-}
-void _feedPet() {
-setState(() {
-hungerLevel -= 10;
-_updateHappiness();
-});
-}
-void _updateHappiness() {
-if (hungerLevel < 30) {
-happinessLevel -= 20;
-} else {
-happinessLevel += 10;
-}
-}
-void _updateHunger() {
-setState(() {
-hungerLevel += 5;
-if (hungerLevel > 100) {
-hungerLevel = 100;
-happinessLevel -= 20;
-}
-});
-}
-@override
-Widget build(BuildContext context) {
-return Scaffold(
-appBar: AppBar(
-title: Text('Digital Pet'),
-),
-body: Center(
-child: Column(
-mainAxisAlignment: MainAxisAlignment.center,
-children: <Widget>[
-Text(
-'Name: $petName',
-style: TextStyle(fontSize: 20.0),
-),
-SizedBox(height: 16.0),
-Text(
-'Happiness Level: $happinessLevel',
-style: TextStyle(fontSize: 20.0),
-),
-SizedBox(height: 16.0),
-Text(
-'Hunger Level: $hungerLevel',
-style: TextStyle(fontSize: 20.0),
-),
-SizedBox(height: 32.0),
-ElevatedButton(
-onPressed: _playWithPet,
-child: Text('Play with Your Pet'),
-),
-SizedBox(height: 16.0),
-ElevatedButton(
-onPressed: _feedPet,
-child: Text('Feed Your Pet'),
-),
-],
-),
-),
-);
-}
+  Pet? _pet;
+  final _petStorage = PetStorageService();
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPet();
+  }
+
+  Future<void> _loadPet() async {
+    final pet = await _petStorage.loadPet();
+    setState(() {
+      _pet = pet;
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _onPetCreated(Pet pet) async {
+    await _petStorage.savePet(pet);
+    setState(() {
+      _pet = pet;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      );
+    }
+
+    if (_pet == null) {
+      return PetCustomizationScreen(onPetCreated: _onPetCreated);
+    }
+    return PetScreen(
+      pet: _pet!,
+      onPetUpdated: (pet) async {
+        await _petStorage.savePet(pet);
+      },
+    );
+  }
 }
