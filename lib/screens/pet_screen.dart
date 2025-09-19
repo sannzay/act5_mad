@@ -3,6 +3,7 @@ import '../models/pet.dart';
 import '../widgets/stat_indicator.dart';
 import '../widgets/animated_pet.dart';
 import '../services/game_mechanics_service.dart';
+import '../services/game_state_service.dart';
 import 'dart:async';
 
 class PetScreen extends StatefulWidget {
@@ -21,7 +22,9 @@ class PetScreen extends StatefulWidget {
 
 class _PetScreenState extends State<PetScreen> {
   final GameMechanicsService _gameMechanics = GameMechanicsService();
+  final GameStateService _gameState = GameStateService();
   String _currentAction = 'idle';
+  Timer? _gameStateCheckTimer;
 
   @override
   void initState() {
@@ -30,11 +33,18 @@ class _PetScreenState extends State<PetScreen> {
       setState(() {});
       widget.onPetUpdated(pet);
     });
+
+    // Check game state every second
+    _gameStateCheckTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => _gameState.checkGameState(widget.pet, context),
+    );
   }
 
   @override
   void dispose() {
     _gameMechanics.stopGame();
+    _gameStateCheckTimer?.cancel();
     super.dispose();
   }
 
