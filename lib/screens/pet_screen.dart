@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/pet.dart';
 import '../widgets/stat_indicator.dart';
+import '../widgets/animated_pet.dart';
+import '../services/game_mechanics_service.dart';
 import 'dart:async';
 
 class PetScreen extends StatefulWidget {
@@ -18,42 +20,63 @@ class PetScreen extends StatefulWidget {
 }
 
 class _PetScreenState extends State<PetScreen> {
-  late Timer _timer;
+  final GameMechanicsService _gameMechanics = GameMechanicsService();
+  String _currentAction = 'idle';
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
-      setState(() {
-        widget.pet.updateStats();
-        widget.onPetUpdated(widget.pet);
-      });
+    _gameMechanics.startGame(widget.pet, (pet) {
+      setState(() {});
+      widget.onPetUpdated(pet);
     });
   }
 
   @override
   void dispose() {
-    _timer.cancel();
+    _gameMechanics.stopGame();
     super.dispose();
   }
 
   void _performAction(String action) {
     setState(() {
+      _currentAction = action;
       switch (action) {
         case 'feed':
           widget.pet.feed();
+          if (widget.pet.hunger < 30) {
+            _gameMechanics.addEnergeticEffect(widget.pet);
+          }
           break;
         case 'play':
           widget.pet.play();
+          if (widget.pet.energy < 20) {
+            _gameMechanics.addHungryEffect(widget.pet);
+          }
           break;
         case 'rest':
           widget.pet.rest();
+          if (widget.pet.energy > 80) {
+            _gameMechanics.addEnergeticEffect(widget.pet);
+          }
           break;
         case 'clean':
           widget.pet.clean();
+          if (widget.pet.cleanliness < 30) {
+            _gameMechanics.addSicknessEffect(widget.pet);
+          }
           break;
       }
       widget.onPetUpdated(widget.pet);
+    });
+
+    // Reset action to idle after animation
+    Future.delayed(const Duration(milliseconds: 1000), () {
+      if (mounted) {
+        setState(() {
+          _currentAction = 'idle';
+        });
+      }
     });
   }
 
@@ -73,6 +96,11 @@ class _PetScreenState extends State<PetScreen> {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
+                    AnimatedPet(
+                      pet: widget.pet,
+                      action: _currentAction,
+                    ),
+                    const SizedBox(height: 16),
                     Text(
                       widget.pet.name,
                       style: Theme.of(context).textTheme.headlineMedium,
