@@ -17,11 +17,11 @@ class GameMechanicsService {
     _gameTimer?.cancel();
     _gameTimer = Timer.periodic(updateInterval, (timer) {
       pet.updateStats();
-
+      
       for (var effect in _statusEffects) {
         effect(pet);
       }
-
+      
       onPetUpdated(pet);
     });
   }
@@ -47,7 +47,6 @@ class GameMechanicsService {
   void addSicknessEffect(Pet pet) {
     final effect = (Pet pet) {
       if (pet.cleanliness < 30 || pet.hunger > 80) {
-        pet.health = (pet.health - 5).clamp(0.0, 100.0);
         pet.happiness = (pet.happiness - 5).clamp(0.0, 100.0);
       }
     };

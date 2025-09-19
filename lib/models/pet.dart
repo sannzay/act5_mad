@@ -5,7 +5,6 @@ class Pet {
   String type;
   double happiness;
   double hunger;
-  double health;
   double energy;
   double cleanliness;
   DateTime lastInteraction;
@@ -15,7 +14,6 @@ class Pet {
     required this.type,
     this.happiness = 100.0,
     this.hunger = 0.0,
-    this.health = 100.0,
     this.energy = 100.0,
     this.cleanliness = 100.0,
   }) : lastInteraction = DateTime.now();
@@ -66,15 +64,14 @@ class Pet {
         happiness = (happiness - difference * 0.5).clamp(0.0, 100.0);
       }
       
-      // Health decreases if multiple needs are critical
+      // Happiness decreases if multiple needs are critical
       int criticalNeeds = 0;
       if (hunger > 90) criticalNeeds++;
       if (energy < 10) criticalNeeds++;
       if (cleanliness < 10) criticalNeeds++;
-      if (happiness < 10) criticalNeeds++;
       
       if (criticalNeeds >= 2) {
-        health = (health - difference * criticalNeeds * 0.1).clamp(0.0, 100.0);
+        happiness = (happiness - difference * criticalNeeds * 0.5).clamp(0.0, 100.0);
       }
     }
   }
@@ -89,7 +86,6 @@ class Pet {
       'type': type,
       'happiness': happiness,
       'hunger': hunger,
-      'health': health,
       'energy': energy,
       'cleanliness': cleanliness,
       'lastInteraction': lastInteraction.toIso8601String(),
@@ -102,7 +98,6 @@ class Pet {
       type: json['type'],
       happiness: json['happiness'],
       hunger: json['hunger'],
-      health: json['health'],
       energy: json['energy'],
       cleanliness: json['cleanliness'],
     )..lastInteraction = DateTime.parse(json['lastInteraction']);

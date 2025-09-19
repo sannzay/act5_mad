@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import '../models/pet.dart';
 import '../widgets/stat_indicator.dart';
 import '../widgets/animated_pet.dart';
+import '../widgets/energy_bar.dart';
+import '../widgets/activity_selector.dart';
 import '../services/game_mechanics_service.dart';
 import '../services/game_state_service.dart';
+import '../screens/pet_customization_screen.dart';
 import 'dart:async';
 
 class PetScreen extends StatefulWidget {
@@ -25,6 +28,42 @@ class _PetScreenState extends State<PetScreen> {
   final GameStateService _gameState = GameStateService();
   String _currentAction = 'idle';
   Timer? _gameStateCheckTimer;
+  bool _isCharging = false;
+
+  final List<Activity> _activities = [
+    Activity(
+      name: 'Play',
+      icon: Icons.sports_esports,
+      color: Colors.blue,
+      energyCost: 20,
+      happinessGain: 15,
+      description: 'Play with your pet to increase happiness',
+    ),
+    Activity(
+      name: 'Play',
+      icon: Icons.sports_basketball,
+      color: Colors.green,
+      energyCost: 30,
+      happinessGain: 20,
+      description: 'Play with your pet to increase happiness',
+    ),
+    Activity(
+      name: 'Train',
+      icon: Icons.school,
+      color: Colors.purple,
+      energyCost: 25,
+      happinessGain: 10,
+      description: 'Train your pet new tricks',
+    ),
+    Activity(
+      name: 'Groom',
+      icon: Icons.brush,
+      color: Colors.orange,
+      energyCost: 15,
+      happinessGain: 12,
+      description: 'Groom your pet to maintain cleanliness',
+    ),
+  ];
 
   @override
   void initState() {
@@ -48,6 +87,83 @@ class _PetScreenState extends State<PetScreen> {
     super.dispose();
   }
 
+  void _performActivity(Activity activity) {
+    if (widget.pet.energy < activity.energyCost) {
+      return;
+    }
+
+    setState(() {
+      _currentAction = activity.name.toLowerCase();
+      widget.pet.energy = (widget.pet.energy - activity.energyCost).clamp(0.0, 100.0);
+      widget.pet.happiness = (widget.pet.happiness + activity.happinessGain).clamp(0.0, 100.0);
+      widget.pet.hunger = (widget.pet.hunger + activity.energyCost * 0.3).clamp(0.0, 100.0);
+      
+      if (widget.pet.energy < 30) {
+        _gameMechanics.addHungryEffect(widget.pet);
+      }
+      
+      widget.onPetUpdated(widget.pet);
+    });
+
+    // Show charging animation while resting
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _currentAction = 'idle';
+        });
+      }
+    });
+  }
+
+  void _showQuitConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'Quit Current Game?',
+          style: TextStyle(color: Colors.red),
+        ),
+        content: const Text(
+          'Are you sure you want to quit the current game and start over? '
+          'All progress will be lost.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (context) => PetCustomizationScreen(
+                    onPetCreated: (pet) {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) => PetScreen(
+                            pet: pet,
+                            onPetUpdated: widget.onPetUpdated,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Quit and Replay'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _performAction(String action) {
     setState(() {
       _currentAction = action;
@@ -58,23 +174,19 @@ class _PetScreenState extends State<PetScreen> {
             _gameMechanics.addEnergeticEffect(widget.pet);
           }
           break;
-        case 'play':
-          widget.pet.play();
-          if (widget.pet.energy < 20) {
-            _gameMechanics.addHungryEffect(widget.pet);
-          }
-          break;
         case 'rest':
+          _isCharging = true;
           widget.pet.rest();
           if (widget.pet.energy > 80) {
             _gameMechanics.addEnergeticEffect(widget.pet);
           }
-          break;
-        case 'clean':
-          widget.pet.clean();
-          if (widget.pet.cleanliness < 30) {
-            _gameMechanics.addSicknessEffect(widget.pet);
-          }
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) {
+              setState(() {
+                _isCharging = false;
+              });
+            }
+          });
           break;
       }
       widget.onPetUpdated(widget.pet);
@@ -95,6 +207,20 @@ class _PetScreenState extends State<PetScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.pet.name),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: ElevatedButton.icon(
+              onPressed: () => _showQuitConfirmation(context),
+              icon: const Icon(Icons.replay),
+              label: const Text('Quit & Replay'),
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.red.shade400,
+              ),
+            ),
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -126,16 +252,6 @@ class _PetScreenState extends State<PetScreen> {
                       color: Colors.yellow,
                     ),
                     StatIndicator(
-                      label: 'Health',
-                      value: widget.pet.health,
-                      color: Colors.red,
-                    ),
-                    StatIndicator(
-                      label: 'Energy',
-                      value: widget.pet.energy,
-                      color: Colors.green,
-                    ),
-                    StatIndicator(
                       label: 'Hunger',
                       value: widget.pet.hunger,
                       color: Colors.orange,
@@ -145,36 +261,42 @@ class _PetScreenState extends State<PetScreen> {
                       value: widget.pet.cleanliness,
                       color: Colors.blue,
                     ),
+                    const SizedBox(height: 8),
+                    EnergyBar(
+                      energy: widget.pet.energy,
+                      isCharging: _isCharging,
+                    ),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 24),
-            Wrap(
-              spacing: 8.0,
-              runSpacing: 8.0,
-              children: [
-                ActionButton(
-                  icon: Icons.restaurant,
-                  label: 'Feed',
-                  onPressed: () => _performAction('feed'),
-                ),
-                ActionButton(
-                  icon: Icons.sports_esports,
-                  label: 'Play',
-                  onPressed: () => _performAction('play'),
-                ),
-                ActionButton(
-                  icon: Icons.hotel,
-                  label: 'Rest',
-                  onPressed: () => _performAction('rest'),
-                ),
-                ActionButton(
-                  icon: Icons.cleaning_services,
-                  label: 'Clean',
-                  onPressed: () => _performAction('clean'),
-                ),
-              ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: ActivitySelector(
+                activities: _activities,
+                currentEnergy: widget.pet.energy,
+                onActivitySelected: _performActivity,
+              ),
+            ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.only(bottom: 20.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ActionButton(
+                    icon: Icons.restaurant,
+                    label: 'Feed',
+                    onPressed: () => _performAction('feed'),
+                  ),
+                  ActionButton(
+                    icon: Icons.hotel,
+                    label: 'Rest',
+                    onPressed: () => _performAction('rest'),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

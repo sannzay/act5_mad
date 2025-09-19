@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/pet.dart';
+import '../screens/pet_customization_screen.dart';
+import '../screens/pet_screen.dart';
 
 enum GameState {
   playing,
@@ -60,8 +62,29 @@ class GameStateService {
     _showGameEndDialog(
       context,
       'Game Over',
-      'Your pet is too hungry and unhappy. Try to take better care next time!',
+      'Your pet is too hungry and unhappy. Would you like to try again?',
       Colors.red,
+    );
+  }
+
+  void restartGame(BuildContext context) {
+    _currentState = GameState.playing;
+    _highHappinessStartTime = null;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => PetCustomizationScreen(
+          onPetCreated: (pet) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => PetScreen(
+                  pet: pet,
+                  onPetUpdated: (pet) {},
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
@@ -96,17 +119,7 @@ class GameStateService {
             onPressed: () {
               Navigator.of(context).pop();
               if (_currentState == GameState.lost) {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(
-                    builder: (context) => const MaterialApp(
-                      home: Scaffold(
-                        body: Center(
-                          child: Text('Start a new game to try again!'),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
+                restartGame(context);
               }
             },
             child: Text(_currentState == GameState.won ? 'Continue' : 'New Game'),
