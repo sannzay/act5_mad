@@ -63,6 +63,26 @@ class _AnimatedPetState extends State<AnimatedPet> with SingleTickerProviderStat
     super.dispose();
   }
 
+  Color _getColorByHappiness() {
+    if (widget.pet.happiness > 70) {
+      return Colors.green.withOpacity(0.7); // Happy
+    } else if (widget.pet.happiness >= 30) {
+      return Colors.yellow.withOpacity(0.7); // Neutral
+    } else {
+      return Colors.red.withOpacity(0.7); // Unhappy
+    }
+  }
+
+  String _getEmotionalState() {
+    if (widget.pet.happiness > 70) {
+      return 'Happy';
+    } else if (widget.pet.happiness >= 30) {
+      return 'Neutral';
+    } else {
+      return 'Unhappy';
+    }
+  }
+
   Widget _buildPetEmoji() {
     String emoji;
     switch (widget.pet.type.toLowerCase()) {
@@ -81,9 +101,31 @@ class _AnimatedPetState extends State<AnimatedPet> with SingleTickerProviderStat
       default:
         emoji = '🐱';
     }
-    return Text(
-      emoji,
-      style: const TextStyle(fontSize: 72),
+    
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _getColorByHappiness(),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            emoji,
+            style: const TextStyle(fontSize: 72),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _getEmotionalState(),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: _getColorByHappiness(),
+          ),
+        ),
+      ],
     );
   }
 
